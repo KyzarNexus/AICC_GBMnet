@@ -1,0 +1,3 @@
+# Intended as a space to list packages and the python version necessary to run the main script & all supporting scripts. 
+# Will be updated later. 
+
