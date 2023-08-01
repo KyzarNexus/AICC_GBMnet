@@ -1,25 +1,4 @@
 """
-Needed Changes:
-
-- numpy.unique the input nifty, typecast to int and convert back to a saved nifty; view file afterwards (any nifty viewer will do) to verify integrity. 
-    - print(np.unique(batch_y))
-    - print(np.unique(batch_y.astype('int32')))
-    - Perform this for seg and autoseg
-
-- Correct loss function (dice loss [1-dice_coefficient], function is already available in __main__. Just needs to be implemented.)
-
-- Data splitting (train,test,val); currently contaminated. 
-
-- Enable git push/pull for all users (seems to be restricted to permission for initial user only)
-
-- change to 'softmax' activation when training set is corrected to multi-class segmentation. 
-
-- Adapt script to run on the hpc. 
-    - Optional flag commands to enab
-    - slurm commands
-    - expanding parameter set (filter count, batch size, etc.)
-    - Suggestion: optional flag commands to
-
 Dataset Descriptor:
 https://www.nature.com/articles/s41597-022-01560-7
 Dataset Link:
@@ -196,8 +175,7 @@ yImage = 240
 zImage = 160
 shape_tuple = (xImage,yImage,zImage)
 
-tf.keras.backend.clear_session()
-Unet = build_unet_model(shape_tuple,start_neurons)
+
 # Unet.compile(loss = tf.keras.losses.categorical_crossentropy, optimizer= 'adam', metrics=['accuracy'])
 # %%
 #Learning Rate Annealer
@@ -248,8 +226,12 @@ class LayerDataCallback(tf.keras.callbacks.Callback):
 #%%
 #Defining the parameters
 batch_size = 4   
-num_epochs = 15   
-learn_rate = .01
+num_epochs = 100   
+lr = .10
+activation = "sigmoid"
+
+tf.keras.backend.clear_session()
+Unet = build_unet_model(shape_tuple,start_neurons, lr = lr, activation = activation)
 #%% 
 # testing on subset of dataset. 
 trim_flag = True
@@ -270,6 +252,7 @@ else:
 #%%
 # Training Unet
 train_generator = data_generator(x_train_fit, y_train_fit, batch_size=batch_size, target_shape = shape_tuple)
+#%%
 unet_1 = Unet.fit(x=train_generator,
          epochs = num_epochs, 
          steps_per_epoch = None, 
@@ -297,7 +280,7 @@ ax[0].plot(np.argmin(unet_1.history["val_loss"]), np.min(unet_1.history["val_los
 ax[0].set(xlabel='Epochs',ylabel='Loss')
 ax[0].legend()
 
-# Training/Validation Accuracy
+# # Training/Validation Accuracy
 ax[1].plot(unet_1.history['accuracy'],color='b',label='Training  Accuracy')
 ax[1].plot(unet_1.history['val_accuracy'],color='r',label='Validation Accuracy')
 ax[1].set(xlabel='Epochs',ylabel='Accuracy')
@@ -308,6 +291,25 @@ ax[1].legend()
 
 
 # %% Evaluate the Model on test data
-Unet.evaluate(x=data_generator(x_set=x_test_eval, y_set=y_test_eval, batch_size=batch_size, target_shape = shape_tuple), 
+unet_eval = Unet.evaluate(x=data_generator(x_set=x_test_eval, y_set=y_test_eval, batch_size=batch_size, target_shape = shape_tuple), 
             #   use_multiprocessing=True
               )  ##!!  
+
+
+
+# %% # Testing output of model
+out_gen = data_generator(x_total, y_total, batch_size=1, target_shape = shape_tuple)
+#%%
+out_x, out_y = out_gen[0]
+unet_out = Unet.predict(out_x)
+# %%
+
+#%%
+print(np.shape(out_x))
+cat = 1 # 0-3
+frame = 80
+plt.figure()
+plt.imshow(unet_out[0,0:239,0:239,frame,cat])
+plt.figure()
+plt.imshow(out_y[0,0:239,0:239,frame,cat])
+# %%

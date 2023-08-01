@@ -61,7 +61,7 @@ def dice_loss(inputs, targets, smooth=1e-6):
     
     
 #%%
-def build_unet_model(shape_tuple = (240, 240, 160), start_neurons = 4):
+def build_unet_model(shape_tuple = (240, 240, 160), start_neurons = 4, lr = 0.01, activation = 'sigmoid'):
     # Constructing U-Net (4 downsteps)
     # General Structure from source 1:
     # https://towardsdatascience.com/unet-line-by-line-explanation-9b191c76baf5
@@ -80,25 +80,25 @@ def build_unet_model(shape_tuple = (240, 240, 160), start_neurons = 4):
     conv1 = Conv3D(start_neurons*1,(3, 3, 3),activation='relu',padding='same')(conv1)
     conv1 = BatchNormalization()(conv1)
     pool1 = MaxPooling3D(pool_size=2, strides=2, padding = 'same')(conv1)
-    pool1 = Dropout(0.25)(pool1)
+    # pool1 = Dropout(0.25)(pool1)
     # Down-Step 2
     conv2 = Conv3D(start_neurons*2,(3, 3, 3),activation='relu',padding='same')(pool1)
     conv2 = Conv3D(start_neurons*2,(3, 3, 3),activation='relu',padding='same')(conv2)
     conv2 = BatchNormalization()(conv2)
     pool2 = MaxPooling3D(pool_size=2, strides=2, padding = 'same')(conv2)
-    pool2 = Dropout(0.5)(pool2)
+    # pool2 = Dropout(0.5)(pool2)
     # Down-Step 3
     conv3 = Conv3D(start_neurons*4,(3, 3, 3),activation='relu',padding='same')(pool2)
     conv3 = Conv3D(start_neurons*4,(3, 3, 3),activation='relu',padding='same')(conv3)
     conv3 = BatchNormalization()(conv3)
     pool3 = MaxPooling3D(pool_size=2, strides=2, padding = 'same')(conv3)
-    pool3 = Dropout(0.5)(pool3)
+    # pool3 = Dropout(0.5)(pool3)
     # Down-Step 4
     conv4 = Conv3D(start_neurons*8,(3, 3, 3),activation='relu',padding='same')(pool3)
     conv4 = Conv3D(start_neurons*8,(3, 3, 3),activation='relu',padding='same')(conv4)
     conv4 = BatchNormalization()(conv4)
     pool4 = MaxPooling3D(pool_size=2, strides=2, padding = 'same')(conv4)
-    pool4 = Dropout(0.5)(pool4)
+    # pool4 = Dropout(0.5)(pool4)
     # Mid 
     convm = Conv3D(start_neurons*16, (3, 3, 3), activation="relu", padding="same")(pool4)
     convm = Conv3D(start_neurons*16, (3, 3, 3), activation="relu", padding="same")(convm)
@@ -106,7 +106,7 @@ def build_unet_model(shape_tuple = (240, 240, 160), start_neurons = 4):
     # Up-Step 4
     deconv4 = Conv3DTranspose(start_neurons * 8, (3, 3, 3), strides=(2, 2, 2), padding="same")(convm)
     uconv4 = Concatenate()([deconv4, conv4])
-    uconv4 = Dropout(0.5)(uconv4)
+    # uconv4 = Dropout(0.5)(uconv4)
     uconv4 = Conv3D(start_neurons*8, (3, 3, 3), activation="relu", padding="same")(uconv4)
     uconv4 = Conv3D(start_neurons*8, (3, 3, 3), activation="relu", padding="same")(uconv4)
     uconv4 = BatchNormalization()(uconv4)
@@ -114,7 +114,7 @@ def build_unet_model(shape_tuple = (240, 240, 160), start_neurons = 4):
     # Up 3
     deconv3 = Conv3DTranspose(start_neurons * 4, (3, 3, 3), strides=(2, 2, 2), padding="same")(uconv4)
     uconv3 = Concatenate()([deconv3, conv3])
-    uconv3 = Dropout(0.5)(uconv3)
+    # uconv3 = Dropout(0.5)(uconv3)
     uconv3 = Conv3D(start_neurons*4, (3, 3, 3), activation="relu", padding="same")(uconv3)
     uconv3 = Conv3D(start_neurons*4, (3, 3, 3), activation="relu", padding="same")(uconv3)
     uconv3 = BatchNormalization()(uconv3)
@@ -122,14 +122,14 @@ def build_unet_model(shape_tuple = (240, 240, 160), start_neurons = 4):
     # Up 2
     deconv2 = Conv3DTranspose(start_neurons * 2, (3, 3, 3), strides=(2, 2, 2), padding="same")(uconv3)
     uconv2 = Concatenate()([deconv2, conv2])
-    uconv2 = Dropout(0.5)(uconv2)
+    # uconv2 = Dropout(0.5)(uconv2)
     uconv2 = Conv3D(start_neurons*2, (3, 3, 3), activation="relu", padding="same")(uconv2)
     uconv2 = Conv3D(start_neurons*2, (3, 3, 3), activation="relu", padding="same")(uconv2)
     uconv2 = BatchNormalization()(uconv2)
     # Up 1
     deconv1 = Conv3DTranspose(start_neurons * 1, (3, 3, 3), strides=(2, 2, 2), padding="same")(uconv2)
     uconv1 = Concatenate()([deconv1, conv1])
-    uconv1 = Dropout(0.5)(uconv1)
+    # uconv1 = Dropout(0.5)(uconv1)
     uconv1 = Conv3D(start_neurons * 1, (3, 3, 3), activation="relu", padding="same")(uconv1)
     uconv1 = Conv3D(start_neurons * 1, (3, 3, 3), activation="relu", padding="same")(uconv1)
     uconv1 = BatchNormalization()(uconv1)
@@ -137,12 +137,12 @@ def build_unet_model(shape_tuple = (240, 240, 160), start_neurons = 4):
     # 1st entry, numbers of classes
     # activation may need to be 'linear' or 'softmax'. 
     # Might be 3 classes??
-    output_layer = Conv3D(3, (1,1,1), padding="same", activation="softmax")(uconv1)
+    output_layer = Conv3D(3, (1,1,1), padding="same", activation=activation)(uconv1)
 
     model = Model(input_layer,output_layer)
     # Summary
     model.summary()
-    model.compile(loss = dice_loss, optimizer= 'adam', metrics=['accuracy'])
+    model.compile(loss = dice_loss, optimizer= keras.optimizers.Adam(learning_rate=lr), metrics=['accuracy'])
     return model
 
 
